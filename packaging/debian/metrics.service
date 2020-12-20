@@ -1,0 +1,19 @@
+[Unit]
+Description=openbank metrics daemon relay
+ConditionPathExists=/etc/metrics/conf.d/telegraf.conf
+
+[Service]
+Type=notify
+StartLimitBurst=0
+ExecStart=telegraf --config /etc/metrics/conf.d/telegraf.conf
+StandardInput=null
+LimitNOFILE=1048576
+LimitNPROC=infinity
+LimitCORE=infinity
+Restart=always
+RestartSec=0
+TimeoutStartSec=0
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

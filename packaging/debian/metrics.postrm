@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+
+#DEBHELPER#
+if [ "$1" = remove -o "$1" = purge ] && [ -f /etc/metrics/conf.d/telegraf.conf ] ; then
+  rm /etc/metrics/conf.d/telegraf.conf
+fi

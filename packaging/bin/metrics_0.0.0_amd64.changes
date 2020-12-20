@@ -1,0 +1,25 @@
+Format: 1.8
+Date: Sun, 20 Dec 2020 08:00:51 +0100
+Source: metrics
+Binary: metrics
+Architecture: amd64
+Version: 0.0.0
+Distribution: unstable
+Urgency: medium
+Maintainer: Jan Cajthaml <jan.cajthaml@gmail.com>
+Changed-By: Jan Cajthaml <jan.cajthaml@gmail.com>
+Description:
+ metrics    - statsd metrics daemon for openbank
+Changes:
+ metrics (0.0.0) unstable; urgency=medium
+ .
+   * contains unrelease commits
+Checksums-Sha1:
+ f4b7aafded528d9d4687c0ce42585f8ba224bd66 4278 metrics_0.0.0_amd64.buildinfo
+ 9f8cbddb45a5a332169202b4d9a3946edc1dd802 4792 metrics_0.0.0_amd64.deb
+Checksums-Sha256:
+ 11e6c8cded49860b12c77ddf98d49ef4470fbe74898ddcad7e245f78d65cd175 4278 metrics_0.0.0_amd64.buildinfo
+ aec27794426aee36ca41074c60f4246afd8f9e5e46d39f44300b3db924cb2e00 4792 metrics_0.0.0_amd64.deb
+Files:
+ cbef787dd2b19424c0a6230c8698dbf4 4278 misc optional metrics_0.0.0_amd64.buildinfo
+ 5a702e45f63036a7574979776613b839 4792 misc optional metrics_0.0.0_amd64.deb
