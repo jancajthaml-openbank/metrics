@@ -1,0 +1,33 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DEB_BUILD_OPTIONS = parallel=$(shell getconf _NPROCESSORS_ONLN)
+
+SUBSTVARS = -Vshlibs:Depends="libc6"
+
+%:
+	+dh $@ -P debian/target/${DEB_HOST_ARCH} --with=systemd
+
+override_dh_systemd_enable:
+	dh_systemd_enable -pmetrics --name=metrics metrics.service
+
+override_dh_systemd_start:
+	dh_systemd_start -pmetrics --name=metrics metrics.service
+
+override_dh_installinit:
+	dh_installinit -pmetrics --noscripts
+
+override_dh_strip:
+
+override_dh_shlibdeps:
+
+override_dh_gencontrol:
+	dh_gencontrol -- $(SUBSTVARS)
+
+clean:
+	rm -f debian/debhelper-build-stamp || :
+	rm -f debian/files || :
+	rm -rf debian/target/${DEB_HOST_ARCH} || :
+	rm -rf debian/*.debhelper* || :
+	rm -rf debian/*.substvars || :
