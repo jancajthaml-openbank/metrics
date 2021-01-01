@@ -22,6 +22,7 @@ workflows:
               only: /^v[0-9]+(\.[0-9]+)*$/
       - package-debian-amd64:
           requires:
+            - checkout
             - versions
           filters:
             branches:
@@ -30,6 +31,7 @@ workflows:
               only: /^v[0-9]+(\.[0-9]+)*$/
       - package-debian-armhf:
           requires:
+            - checkout
             - versions
           filters:
             branches:
@@ -38,6 +40,7 @@ workflows:
               only: /^v[0-9]+(\.[0-9]+)*$/
       - package-debian-arm64:
           requires:
+            - checkout
             - versions
           filters:
             branches:
@@ -67,17 +70,17 @@ workflows:
     jobs:
       - checkout
       - versions
-      - deps:
-          requires:
-            - checkout
       - package-debian-amd64:
           requires:
+            - checkout
             - versions
       - package-debian-armhf:
           requires:
+            - checkout
             - versions
       - package-debian-arm64:
           requires:
+            - checkout
             - versions
       - package-docker:
           requires:
