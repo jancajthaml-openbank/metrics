@@ -31,7 +31,7 @@ RUN wget -qO- https://repos.influxdata.com/influxdb.key | apt-key add && \
     echo "deb https://repos.influxdata.com/debian buster stable" | tee /etc/apt/sources.list.d/influxdb.list && \
     apt-get update
 
-RUN apt-get install -y -f /opt/artifacts/metrics_0.0.0_amd64.deb
+RUN find /opt/artifacts -name metrics_*_amd64.deb | xargs -I{} -tx apt-get install -y -f {}
 
 RUN mkdir -p /opt/metrics/data
 
@@ -41,6 +41,7 @@ RUN mkdir -p /opt/metrics/data
 FROM amd64/debian:buster
 
 COPY --from=0 /opt/artifacts/* /tmp/artifacts/
+
 COPY --from=0 /usr/bin/telegraf /usr/bin/telegraf
 COPY --from=0 /usr/lib/telegraf /usr/lib/telegraf
 COPY --from=0 /etc/telegraf /etc/telegraf
