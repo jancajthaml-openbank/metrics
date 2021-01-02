@@ -40,7 +40,7 @@ RUN mkdir -p /opt/metrics/data
 
 FROM amd64/debian:buster
 
-COPY --from=0 /opt/artifacts/* /tmp/artifacts/
+COPY --from=0 /opt/artifacts /opt/artifacts
 
 COPY --from=0 /usr/bin/telegraf /usr/bin/telegraf
 COPY --from=0 /usr/lib/telegraf /usr/lib/telegraf
