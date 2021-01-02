@@ -260,10 +260,12 @@ jobs:
 
             docker build \
               -t docker.io/openbank/metrics:${VERSION}-${META} \
-              packaging/docker/Dockerfile
+              -f packaging/docker/Dockerfile \
+              .
             docker build \
               -t docker.pkg.github.com/jancajthaml-openbank/metrics/metrics:${VERSION} \
-              packaging/docker/Dockerfile
+              -f packaging/docker/Dockerfile \
+              .
       - run:
           name: Publish to docker.io
           command: |
