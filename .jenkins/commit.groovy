@@ -10,7 +10,7 @@ def dockerOptions() {
     options += "--label 'org.opencontainers.image.title=${env.PROJECT_NAME}' "
     options += "--label 'org.opencontainers.image.description=${env.PROJECT_DESCRIPTION}' "
     options += "-f packaging/docker/Dockerfile "
-    options += "-f ."
+    options += "."
     return options
 }
 
