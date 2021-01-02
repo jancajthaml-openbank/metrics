@@ -47,4 +47,4 @@ COPY --from=0 /etc/telegraf /etc/telegraf
 COPY --from=0 /etc/metrics /etc/metrics
 COPY --from=0 /opt/metrics /opt/metrics
 
-ENTRYPOINT ["/usr/bin/telegraf", "--config", "/etc/metrics/conf.d/telegraf.conf"]
+ENTRYPOINT [ "/usr/bin/telegraf", "--config", "/etc/metrics/conf.d/telegraf.conf" ]
