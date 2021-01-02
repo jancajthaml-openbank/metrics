@@ -35,7 +35,10 @@ bundle-debian-%: %
 
 .PHONY: bundle-docker
 bundle-docker:
-	@docker build -t openbank/metrics:$(VERSION)-$(META) .
+	@docker build \
+		-t openbank/metrics:$(VERSION)-$(META) \
+		-f packaging/docker/Dockerfile \
+		.
 
 .PHONY: release
 release:

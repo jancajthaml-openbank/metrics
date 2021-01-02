@@ -258,8 +258,14 @@ jobs:
             VERSION=$(cat /mnt/ramdisk/VERSION)
             META=$(cat /mnt/ramdisk/META)
 
-            docker build -t docker.io/openbank/metrics:${VERSION}-${META} .
-            docker build -t docker.pkg.github.com/jancajthaml-openbank/metrics/metrics:${VERSION} .
+            docker build \
+              -t docker.io/openbank/metrics:${VERSION}-${META} \
+              -f packaging/docker/Dockerfile \
+              .
+            docker build \
+              -t docker.pkg.github.com/jancajthaml-openbank/metrics/metrics:${VERSION} \
+              -f packaging/docker/Dockerfile \
+              .
       - run:
           name: Publish to docker.io
           command: |
