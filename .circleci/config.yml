@@ -259,7 +259,7 @@ jobs:
             META=$(cat /mnt/ramdisk/META)
 
             docker build \
-              -t docker.io/openbank/metrics:${VERSION}-${META} \
+              -t docker.io/openbank/metrics:v${VERSION}-${META} \
               -f packaging/docker/Dockerfile \
               .
             docker build \
