@@ -8,15 +8,14 @@ export VERSION = $(shell git fetch --tags --force 2> /dev/null; tags=($$(git tag
 .ONESHELL:
 .PHONY: arm64
 .PHONY: amd64
-.PHONY: armhf
 
 .PHONY: all
 all: package
 
 .PHONY: package
 package:
-	@$(MAKE) package-amd64
-	@$(MAKE) bundle-docker
+	@$(MAKE) package-$(ARCH)
+	@$(MAKE) bundle-docker-$(ARCH)
 
 .PHONY: package-%
 package-%: %
@@ -34,13 +33,13 @@ bundle-debian-%: %
 		--pkg metrics \
 		--source /project/packaging
 
-.PHONY: bundle-docker
-bundle-docker:
+.PHONY: bundle-docker-%
+bundle-docker-%: %
 	@\
 		docker \
 		build \
-		-t openbank/metrics:$(VERSION)-$(META) \
-		-f packaging/docker/Dockerfile \
+		-t openbank/metrics:$^-$(VERSION).$(META) \
+		-f packaging/docker/$^/Dockerfile \
 		.
 
 .PHONY: release

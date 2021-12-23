@@ -10,7 +10,7 @@ services:
     image: jancajthaml/debian-packager
     tty: true
     volumes:
-      - .:/project
+      - .:/project:delegated
     working_dir: /project
 
   # -------------------------------------------------------------------------- #

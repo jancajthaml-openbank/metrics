@@ -13,9 +13,8 @@
 # limitations under the License.
 
 # ---------------------------------------------------------------------------- #
-# stage 0 bootstrap dependencies
 
-FROM amd64/debian:buster
+FROM --platform=linux/arm64/v8 arm64v8/debian:sid-slim
 
 COPY packaging/bin/* /opt/artifacts/
 
@@ -28,24 +27,9 @@ RUN apt-get update && \
       wget
 
 RUN wget -qO- https://repos.influxdata.com/influxdb.key | apt-key add && \
-    echo "deb https://repos.influxdata.com/debian buster stable" | tee /etc/apt/sources.list.d/influxdb.list && \
+    echo "deb https://repos.influxdata.com/debian bullseye stable" | tee /etc/apt/sources.list.d/influxdb.list && \
     apt-get update
 
-RUN find /opt/artifacts -name metrics_*_amd64.deb | xargs -I{} -tx apt-get install -y -f {}
-
-RUN mkdir -p /opt/metrics/data
-
-# ---------------------------------------------------------------------------- #
-# stage 1 link files
-
-FROM amd64/debian:buster
-
-COPY --from=0 /opt/artifacts /opt/artifacts
-
-COPY --from=0 /usr/bin/telegraf /usr/bin/telegraf
-COPY --from=0 /usr/lib/telegraf /usr/lib/telegraf
-COPY --from=0 /etc/telegraf /etc/telegraf
-COPY --from=0 /etc/metrics /etc/metrics
-COPY --from=0 /opt/metrics /opt/metrics
+RUN find /opt/artifacts -name metrics_*_arm64.deb | xargs -I{} -tx apt-get install -y -f {}
 
 ENTRYPOINT [ "/usr/bin/telegraf", "--config", "/etc/metrics/conf.d/telegraf.conf" ]

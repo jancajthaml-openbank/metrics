@@ -48,6 +48,9 @@ workflows:
             tags:
               only: /^v[0-9]+(\.[0-9]+)*$/
       - package-docker:
+          matrix:
+            parameters:
+              arch: [amd64, arm64]
           requires:
             - package-debian-amd64
             - package-debian-armhf
@@ -83,6 +86,9 @@ workflows:
             - checkout
             - versions
       - package-docker:
+          matrix:
+            parameters:
+              arch: [amd64, arm64]
           requires:
             - package-debian-amd64
             - package-debian-armhf
@@ -103,6 +109,18 @@ executors:
   debian:
     docker:
       - image: docker.io/jancajthaml/debian-packager:latest
+
+  machine-arm64:
+    machine:
+      image: ubuntu-2004:202111-01
+      docker_layer_caching: false
+      resource_class: arm.medium
+
+  machine-amd64:
+    machine:
+      image: ubuntu-2004:202111-01
+      docker_layer_caching: false
+      resource_class: medium
 
 # ---------------------------------------------------------------------------- #
 
@@ -231,55 +249,51 @@ jobs:
   # -------------------------------------------------------------------------- #
 
   package-docker:
-    docker:
-      - image: docker.io/docker:18.06.0-ce-git
-    working_directory: /mnt/ramdisk
+    parameters:
+      arch:
+        type: string
+    executor: machine-<< parameters.arch >>
+    working_directory: /home/circleci/project
     steps:
       - restore_cache:
           key: code-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
-          key: debian-amd64-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
+          key: binaries-<< parameters.arch >>-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
-          key: debian-armhf-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
-          key: debian-arm64-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
+          key: debian-<< parameters.arch >>-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
           key: versions-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
-      - setup_remote_docker:
-          version: 18.06.0-ce
       - run:
-          name: Package for docker
+          name: Publish << parameters.arch >> to docker.io
           command: |
-            VERSION=$(cat /mnt/ramdisk/VERSION)
-            META=$(cat /mnt/ramdisk/META)
+            export VERSION=$(cat /home/circleci/project/VERSION)
+            export META=$(cat /home/circleci/project/META)
+            export ARCH=<< parameters.arch >>
 
             docker build \
-              -t docker.io/openbank/metrics:v${VERSION}-${META} \
-              -f packaging/docker/Dockerfile \
-              .
+              -t docker.io/openbank/metrics:${ARCH}-${VERSION}.${META} \
+              -f ./packaging/docker/${ARCH}/Dockerfile .
+
+            echo ${DOCKER_PASSWORD} | docker login docker.io -u ${DOCKER_USER} --password-stdin
+
+            docker push docker.io/openbank/metrics:${ARCH}-${VERSION}.${META}
+
+            rm -f /home/circleci/.docker/config.json
+      - run:
+          name: Publish << parameters.arch >> to docker.pkg.github.com
+          command: |
+            export VERSION=$(cat /home/circleci/project/VERSION)
+            export ARCH=<< parameters.arch >>
+
             docker build \
-              -t docker.pkg.github.com/jancajthaml-openbank/metrics/metrics:${VERSION} \
-              -f packaging/docker/Dockerfile \
-              .
-      - run:
-          name: Publish to docker.io
-          command: |
-            echo ${DOCKER_PASSWORD} \
-              | docker login -u ${DOCKER_USER} --password-stdin
-            VERSION=$(cat /mnt/ramdisk/VERSION)
-            META=$(cat /mnt/ramdisk/META)
-            docker push \
-              docker.io/openbank/metrics:v${VERSION}-${META}
-            rm -f /root/.docker/config.json
-      - run:
-          name: Publish to docker.pkg.github.com
-          command: |
-            echo ${GITHUB_RELEASE_TOKEN} \
-              | docker login docker.pkg.github.com -u jancajthaml --password-stdin
-            VERSION=$(cat /mnt/ramdisk/VERSION)
-            docker push \
-              docker.pkg.github.com/jancajthaml-openbank/metrics/metrics:${VERSION}
-            rm -f /root/.docker/config.json
+              -t docker.pkg.github.com/jancajthaml-openbank/metrics/metrics:${ARCH}-${VERSION} \
+              -f ./packaging/docker/${ARCH}/Dockerfile .
+
+            echo ${GITHUB_RELEASE_TOKEN} | docker login docker.pkg.github.com -u ${DOCKER_USER} --password-stdin
+
+            docker push docker.pkg.github.com/jancajthaml-openbank/metrics/metrics:${ARCH}-${VERSION}
+
+            rm -f /home/circleci/.docker/config.json
 
   # -------------------------------------------------------------------------- #
 
