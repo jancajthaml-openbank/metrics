@@ -29,15 +29,6 @@ workflows:
               ignore: /.*/
             tags:
               only: /^v[0-9]+(\.[0-9]+)*$/
-      - package-debian-armhf:
-          requires:
-            - checkout
-            - versions
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^v[0-9]+(\.[0-9]+)*$/
       - package-debian-arm64:
           requires:
             - checkout
@@ -53,7 +44,6 @@ workflows:
               arch: [amd64, arm64]
           requires:
             - package-debian-amd64
-            - package-debian-armhf
             - package-debian-arm64
           filters:
             branches:
@@ -77,10 +67,6 @@ workflows:
           requires:
             - checkout
             - versions
-      - package-debian-armhf:
-          requires:
-            - checkout
-            - versions
       - package-debian-arm64:
           requires:
             - checkout
@@ -91,7 +77,6 @@ workflows:
               arch: [amd64, arm64]
           requires:
             - package-debian-amd64
-            - package-debian-armhf
             - package-debian-arm64
 
 # ---------------------------------------------------------------------------- #
@@ -130,22 +115,22 @@ jobs:
 
   checkout:
     executor: git
-    working_directory: /mnt/ramdisk
+    working_directory: /home/circleci/project
     steps:
       - checkout
       - save_cache:
           key: code-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
           paths:
-            - /mnt/ramdisk/.git
-            - /mnt/ramdisk/dev
-            - /mnt/ramdisk/packaging
-            - /mnt/ramdisk/Dockerfile
+            - /home/circleci/project/.git
+            - /home/circleci/project/dev
+            - /home/circleci/project/packaging
+            - /home/circleci/project/Dockerfile
 
   # -------------------------------------------------------------------------- #
 
   versions:
     executor: git
-    working_directory: /mnt/ramdisk
+    working_directory: /home/circleci/project
     steps:
       - checkout
       - run:
@@ -159,23 +144,23 @@ jobs:
                 VERSION=${tags}
               fi
               META=$(echo -e ${CIRCLE_BRANCH} | sed 's:.*/::')
-              echo -e "${VERSION#v}" > /mnt/ramdisk/VERSION
-              echo -e "${META}" > /mnt/ramdisk/META
+              echo -e "${VERSION#v}" > /home/circleci/project/VERSION
+              echo -e "${META}" > /home/circleci/project/META
             else
-              echo -e "${CIRCLE_TAG#v}" > /mnt/ramdisk/VERSION
-              echo -e "main" > /mnt/ramdisk/META
+              echo -e "${CIRCLE_TAG#v}" > /home/circleci/project/VERSION
+              echo -e "main" > /home/circleci/project/META
             fi
       - save_cache:
           key: versions-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
           paths:
-            - /mnt/ramdisk/VERSION
-            - /mnt/ramdisk/META
+            - /home/circleci/project/VERSION
+            - /home/circleci/project/META
 
   # -------------------------------------------------------------------------- #
 
   package-debian-amd64:
     executor: debian
-    working_directory: /mnt/ramdisk
+    working_directory: /home/circleci/project
     steps:
       - restore_cache:
           key: code-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
@@ -184,48 +169,23 @@ jobs:
       - run:
           name: Package for debian
           command: |
-            VERSION=$(cat /mnt/ramdisk/VERSION)
-            /mnt/ramdisk/dev/lifecycle/debian \
+            VERSION=$(cat /home/circleci/project/VERSION)
+            /home/circleci/project/dev/lifecycle/debian \
               --arch amd64 \
               --pkg metrics \
               --version ${VERSION} \
-              --source /mnt/ramdisk/packaging
+              --source /home/circleci/project/packaging
           no_output_timeout: 5m
       - save_cache:
           key: debian-amd64-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
           paths:
-            - /mnt/ramdisk/packaging/bin
-
-  # -------------------------------------------------------------------------- #
-
-  package-debian-armhf:
-    executor: debian
-    working_directory: /mnt/ramdisk
-    steps:
-      - restore_cache:
-          key: code-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
-          key: versions-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: Package for debian
-          command: |
-            VERSION=$(cat /mnt/ramdisk/VERSION)
-            /mnt/ramdisk/dev/lifecycle/debian \
-              --arch armhf \
-              --pkg metrics \
-              --version ${VERSION} \
-              --source /mnt/ramdisk/packaging
-          no_output_timeout: 5m
-      - save_cache:
-          key: debian-armhf-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
-          paths:
-            - /mnt/ramdisk/packaging/bin
+            - /home/circleci/project/packaging/bin
 
   # -------------------------------------------------------------------------- #
 
   package-debian-arm64:
     executor: debian
-    working_directory: /mnt/ramdisk
+    working_directory: /home/circleci/project
     steps:
       - restore_cache:
           key: code-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
@@ -234,17 +194,17 @@ jobs:
       - run:
           name: Package for debian
           command: |
-            VERSION=$(cat /mnt/ramdisk/VERSION)
-            /mnt/ramdisk/dev/lifecycle/debian \
+            VERSION=$(cat /home/circleci/project/VERSION)
+            /home/circleci/project/dev/lifecycle/debian \
               --arch arm64 \
               --pkg metrics \
               --version ${VERSION} \
-              --source /mnt/ramdisk/packaging
+              --source /home/circleci/project/packaging
           no_output_timeout: 5m
       - save_cache:
           key: debian-arm64-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
           paths:
-            - /mnt/ramdisk/packaging/bin
+            - /home/circleci/project/packaging/bin
 
   # -------------------------------------------------------------------------- #
 
@@ -299,20 +259,18 @@ jobs:
 
   release:
     executor: debian
-    working_directory: /mnt/ramdisk
+    working_directory: /home/circleci/project
     steps:
       - restore_cache:
           key: code-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
           key: debian-amd64-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
-          key: debian-armhf-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
           key: debian-arm64-{{ .Environment.CIRCLE_TAG }}-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
       - deploy:
           name: Release artifacts to github
           command: |
-            /mnt/ramdisk/dev/lifecycle/release \
+            /home/circleci/project/dev/lifecycle/release \
               --version ${CIRCLE_TAG} \
               --token ${GITHUB_RELEASE_TOKEN}
 
