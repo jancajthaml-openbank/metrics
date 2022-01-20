@@ -70,7 +70,7 @@ workflows:
             parameters:
               arch: [amd64, arm64]
           requires:
-            - compile-<< matrix.arch >>
+            - checkout
             - versions
       - package-docker:
           matrix:
