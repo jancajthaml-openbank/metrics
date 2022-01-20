@@ -20,16 +20,10 @@ workflows:
               ignore: /.*/
             tags:
               only: /^v[0-9]+(\.[0-9]+)*$/
-      - package-debian-amd64:
-          requires:
-            - checkout
-            - versions
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^v[0-9]+(\.[0-9]+)*$/
-      - package-debian-arm64:
+      - package-debian:
+          matrix:
+            parameters:
+              arch: [amd64, arm64]
           requires:
             - checkout
             - versions
@@ -43,8 +37,16 @@ workflows:
             parameters:
               arch: [amd64, arm64]
           requires:
-            - package-debian-amd64
-            - package-debian-arm64
+            - package-debian-<< matrix.arch >>
+            - versions
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v[0-9]+(\.[0-9]+)*$/
+      - publish:
+          requires:
+            - package-docker
           filters:
             branches:
               ignore: /.*/
@@ -52,7 +54,7 @@ workflows:
               only: /^v[0-9]+(\.[0-9]+)*$/
       - release:
           requires:
-            - package-docker
+            - publish
           filters:
             branches:
               ignore: /.*/
@@ -63,21 +65,23 @@ workflows:
     jobs:
       - checkout
       - versions
-      - package-debian-amd64:
+      - package-debian:
+          matrix:
+            parameters:
+              arch: [amd64, arm64]
           requires:
-            - checkout
-            - versions
-      - package-debian-arm64:
-          requires:
-            - checkout
+            - compile-<< matrix.arch >>
             - versions
       - package-docker:
           matrix:
             parameters:
               arch: [amd64, arm64]
           requires:
-            - package-debian-amd64
-            - package-debian-arm64
+            - package-debian-<< matrix.arch >>
+            - versions
+      - publish:
+          requires:
+            - package-docker
 
 # ---------------------------------------------------------------------------- #
 
@@ -87,13 +91,13 @@ executors:
     docker:
       - image: docker.io/alpine/git
 
-  go:
+  docker:
     docker:
-      - image: docker.io/jancajthaml/go:latest
+      - image: docker.io/amd64/docker
 
   debian:
     docker:
-      - image: docker.io/jancajthaml/debian-packager:latest
+      - image: docker.io/jancajthaml/debian-packager
 
   machine-arm64:
     machine:
@@ -158,12 +162,17 @@ jobs:
 
   # -------------------------------------------------------------------------- #
 
-  package-debian-amd64:
+  package-debian:
     executor: debian
+    parameters:
+      arch:
+        type: string
     working_directory: /home/circleci/project
     steps:
       - restore_cache:
           key: code-<< pipeline.git.tag >>-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          key: binaries-<< parameters.arch >>-<< pipeline.git.tag >>-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
           key: versions-<< pipeline.git.tag >>-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
       - run:
@@ -171,38 +180,13 @@ jobs:
           command: |
             VERSION=$(cat /home/circleci/project/VERSION)
             /home/circleci/project/dev/lifecycle/debian \
-              --arch amd64 \
+              --arch << parameters.arch >> \
               --pkg metrics \
               --version ${VERSION} \
               --source /home/circleci/project/packaging
           no_output_timeout: 5m
       - save_cache:
-          key: debian-amd64-<< pipeline.git.tag >>-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
-          paths:
-            - /home/circleci/project/packaging/bin
-
-  # -------------------------------------------------------------------------- #
-
-  package-debian-arm64:
-    executor: debian
-    working_directory: /home/circleci/project
-    steps:
-      - restore_cache:
-          key: code-<< pipeline.git.tag >>-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
-          key: versions-<< pipeline.git.tag >>-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: Package for debian
-          command: |
-            VERSION=$(cat /home/circleci/project/VERSION)
-            /home/circleci/project/dev/lifecycle/debian \
-              --arch arm64 \
-              --pkg metrics \
-              --version ${VERSION} \
-              --source /home/circleci/project/packaging
-          no_output_timeout: 5m
-      - save_cache:
-          key: debian-arm64-<< pipeline.git.tag >>-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
+          key: debian-<< parameters.arch >>-<< pipeline.git.tag >>-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
           paths:
             - /home/circleci/project/packaging/bin
 
@@ -224,34 +208,68 @@ jobs:
       - restore_cache:
           key: versions-<< pipeline.git.tag >>-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
       - run:
-          name: Publish << parameters.arch >> to docker.io
+          name: Package for docker << parameters.arch >>
+          command: |
+            mkdir -p tmp
+
+            docker build \
+              -t metrics:<< parameters.arch >>-<< pipeline.git.revision >> \
+              -f ./packaging/docker/<< parameters.arch >>/Dockerfile .
+
+            docker save \
+              metrics:<< parameters.arch >>-<< pipeline.git.revision >> \
+              > tmp/docker-metrics-<< parameters.arch >>-<< pipeline.git.revision >>.tar
+      - save_cache:
+          key: docker-<< parameters.arch >>-<< pipeline.git.tag >>-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - /home/circleci/project/tmp
+
+  # -------------------------------------------------------------------------- #
+
+  publish:
+    executor: docker
+    working_directory: /home/circleci/project
+    steps:
+      - restore_cache:
+          key: versions-<< pipeline.git.tag >>-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          key: docker-arm64-<< pipeline.git.tag >>-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          key: docker-amd64-<< pipeline.git.tag >>-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Environment.CIRCLE_SHA1 }}
+      - setup_remote_docker:
+          version: 19.03.13
+      - run:
+          name: Restore docker image
+          command: |
+            docker load < tmp/docker-metrics-arm64-<< pipeline.git.revision >>.tar
+            docker load < tmp/docker-metrics-amd64-<< pipeline.git.revision >>.tar
+      - run:
+          name: Publish to docker.io
           command: |
             export VERSION=$(cat /home/circleci/project/VERSION)
             export META=$(cat /home/circleci/project/META)
-            export ARCH=<< parameters.arch >>
 
-            docker build \
-              -t docker.io/openbank/metrics:${ARCH}-${VERSION}.${META} \
-              -f ./packaging/docker/${ARCH}/Dockerfile .
+            docker tag metrics:amd64-<< pipeline.git.revision >> docker.io/openbank/metrics:amd64-${VERSION}.${META}
+            docker tag metrics:arm64-<< pipeline.git.revision >> docker.io/openbank/metrics:arm64-${VERSION}.${META}
 
             echo ${DOCKER_PASSWORD} | docker login docker.io -u ${DOCKER_USER} --password-stdin
 
-            docker push docker.io/openbank/metrics:${ARCH}-${VERSION}.${META}
+            docker push docker.io/openbank/metrics:amd64-${VERSION}.${META}
+            docker push docker.io/openbank/metrics:arm64-${VERSION}.${META}
 
             rm -f /home/circleci/.docker/config.json
       - run:
-          name: Publish << parameters.arch >> to docker.pkg.github.com
+          name: Publish to docker.pkg.github.com
           command: |
             export VERSION=$(cat /home/circleci/project/VERSION)
-            export ARCH=<< parameters.arch >>
 
-            docker build \
-              -t docker.pkg.github.com/jancajthaml-openbank/metrics/metrics:${ARCH}-${VERSION} \
-              -f ./packaging/docker/${ARCH}/Dockerfile .
+            docker tag metrics:amd64-<< pipeline.git.revision >> docker.pkg.github.com/jancajthaml-openbank/metrics/metrics:amd64-${VERSION}
+            docker tag metrics:arm64-<< pipeline.git.revision >> docker.pkg.github.com/jancajthaml-openbank/metrics/metrics:arm64-${VERSION}
 
             echo ${GITHUB_RELEASE_TOKEN} | docker login docker.pkg.github.com -u ${DOCKER_USER} --password-stdin
 
-            docker push docker.pkg.github.com/jancajthaml-openbank/metrics/metrics:${ARCH}-${VERSION}
+            docker push docker.pkg.github.com/jancajthaml-openbank/metrics/metrics:amd64-${VERSION}
+            docker push docker.pkg.github.com/jancajthaml-openbank/metrics/metrics:arm64-${VERSION}
 
             rm -f /home/circleci/.docker/config.json
 
