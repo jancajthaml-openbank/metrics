@@ -1,4 +1,3 @@
-debian/target
-.debhelper
 bin/*
 !bin/.gitkeep
+debian/target
